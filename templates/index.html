@@ -5,7 +5,7 @@
     <title>PDFScraper</title>
     <!-- Fonte Google -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500&display=swap" rel="stylesheet">
-    <!-- Estilos customizados -->
+    <link rel="icon" href="static/icone.png" type="image/png">
      
     <style>
         body {
@@ -103,6 +103,8 @@
     <script>
         const fileInput = document.getElementById('fileInput');
         const label = document.querySelector('.upload-box label');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitButton = document.getElementById('submitButton');
 
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
@@ -111,7 +113,27 @@
                 label.textContent = 'Clique ou arraste os arquivos aqui';
             }
         });
+
+        uploadForm.addEventListener('submit', function(e) {
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+            submitButton.textContent = 'Gerando...';
+
+            // Opcional: Exibir um indicador de carregamento
+            // Você pode adicionar um spinner ou alterar o estilo do botão aqui
+
+            // Após o download, limpar o campo de arquivos
+            // Como o formulário está sendo enviado de forma tradicional, precisamos usar o evento 'load' para capturar quando a página recarrega
+            window.addEventListener('load', function() {
+                fileInput.value = '';
+                label.textContent = 'Clique ou arraste os arquivos aqui';
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+                submitButton.textContent = 'Gerar XLSX';
+            });
+        });
     </script>
+
 
 </body>
 </html>

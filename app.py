@@ -56,17 +56,18 @@ def extract_data_from_pdf(pdf_path):
         if match_proprietarios_section:
             proprietarios_text = match_proprietarios_section.group(1)
 
-            # Encontrar todas as ocorrências de "CNPJ:" ou "CPF:" e "Nome:"
+            # Encontrar a primeira ocorrência de "CNPJ:" ou "CPF:" e "Nome:"
             pattern_cnpj_cpf_nome = r'(CNPJ|CPF):\s*([\d./-]+).*?Nome:\s*(.+?)(?=\n|$)'
-            matches = re.findall(pattern_cnpj_cpf_nome, proprietarios_text, re.DOTALL)
-            for match in matches:
-                cnpj_cpf_value = match[1].strip()
-                nome_value = match[2].strip()
+            match = re.search(pattern_cnpj_cpf_nome, proprietarios_text, re.DOTALL)
+            if match:
+                cnpj_cpf_value = match.group(2).strip()
+                nome_value = match.group(3).strip()
                 data['CNPJs/CPFs'].append(cnpj_cpf_value)
                 data['Nomes'].append(nome_value)
 
         else:
             # Caso não encontre via texto, tenta extrair as tabelas
+            found_owner = False
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if 'IDENTIFICAÇÃO DO PROPRIETÁRIO/POSSUIDOR' in page_text:
@@ -82,8 +83,14 @@ def extract_data_from_pdf(pdf_path):
                                 if cnpj_cpf and nome:
                                     data['CNPJs/CPFs'].append(cnpj_cpf.strip())
                                     data['Nomes'].append(nome.strip())
-                    break  # Interrompe após processar a página
+                                    found_owner = True
+                                    break  # Para após encontrar o primeiro proprietário
+                            if found_owner:
+                                break  # Sai do loop de tabelas
+                    if found_owner:
+                        break  # Sai do loop de páginas
     return data
+
 
 # Rota principal
 @app.route('/', methods=['GET', 'POST'])
