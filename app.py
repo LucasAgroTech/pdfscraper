@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, make_response
 import os
 import pandas as pd
 import pdfplumber
@@ -92,12 +92,13 @@ def extract_data_from_pdf(pdf_path):
     return data
 
 
+
 # Rota principal
 @app.route('/', methods=['GET', 'POST'])
 def upload_files():
     if request.method == 'POST':
         if 'files[]' not in request.files:
-            return 'Nenhum arquivo selecionado'
+            return 'Nenhum arquivo selecionado', 400
         files = request.files.getlist('files[]')
         data_list = []
         for file in files:
@@ -127,7 +128,11 @@ def upload_files():
         df = pd.DataFrame(data_list)
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], 'output.xlsx')
         df.to_excel(output_path, index=False)
-        return send_file(output_path, as_attachment=True)
+
+        # Preparar a resposta para incluir o header 'Content-Disposition'
+        response = make_response(send_file(output_path, as_attachment=True, download_name='output.xlsx'))
+        response.headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return response
     return render_template('index.html')
 
 if __name__ == '__main__':

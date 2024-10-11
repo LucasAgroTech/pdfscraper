@@ -69,6 +69,17 @@
         .upload-button:hover {
             background-color: #555;
         }
+
+        .upload-button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .upload-button.loading {
+            background-color: #555;
+            cursor: wait;
+        }
+
         .upload-container h1 {
             display: flex;
             align-items: center;
@@ -78,9 +89,9 @@
         }
 
         .upload-container h1 .icon {
-            width: 40px; /* Ajuste o tamanho conforme necessário */
+            width: 40px;
             height: auto;
-            margin-right: 10px; /* Espaçamento entre o ícone e o texto */
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -90,12 +101,12 @@
 
         <h1><img src="static/icone.png" alt="Ícone" class="icon"> PDFScraper</h1>
         
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
             <div class="upload-box" onclick="document.getElementById('fileInput').click();">
                 <input type="file" id="fileInput" name="files[]" multiple accept=".pdf">
                 <label>Clique ou arraste os arquivos aqui</label>
             </div>
-            <button type="submit" class="upload-button"><i class="fa-solid fa-file-excel"></i>Gerar XLSX</button>
+            <button type="submit" class="upload-button" id="submitButton"><i class="fa-solid fa-file-excel"></i> Gerar XLSX</button>
         </form>
     </div>
 
@@ -106,27 +117,74 @@
         const uploadForm = document.getElementById('uploadForm');
         const submitButton = document.getElementById('submitButton');
 
+        // Desabilitar o botão inicialmente
+        submitButton.disabled = true;
+
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
                 label.textContent = `${fileInput.files.length} arquivo(s) selecionado(s)`;
+                submitButton.disabled = false;
             } else {
                 label.textContent = 'Clique ou arraste os arquivos aqui';
+                submitButton.disabled = true;
             }
         });
 
         uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Previne o envio padrão do formulário
+
             submitButton.disabled = true;
             submitButton.classList.add('loading');
             submitButton.textContent = 'Gerando...';
 
-            // Opcional: Exibir um indicador de carregamento
-            // Você pode adicionar um spinner ou alterar o estilo do botão aqui
+            const formData = new FormData(uploadForm);
 
-            // Após o download, limpar o campo de arquivos
-            // Como o formulário está sendo enviado de forma tradicional, precisamos usar o evento 'load' para capturar quando a página recarrega
-            window.addEventListener('load', function() {
-                fileInput.value = '';
-                label.textContent = 'Clique ou arraste os arquivos aqui';
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Obter o nome do arquivo do header Content-Disposition
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = 'output.xlsx';
+                    if (disposition && disposition.indexOf('attachment') !== -1) {
+                        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                        const matches = filenameRegex.exec(disposition);
+                        if (matches != null && matches[1]) { 
+                            filename = matches[1].replace(/['"]/g, '');
+                        }
+                    }
+
+                    return response.blob().then(blob => {
+                        // Criar um link para download
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+
+                        // Resetar o botão e limpar o campo de arquivos
+                        submitButton.disabled = true;
+                        submitButton.classList.remove('loading');
+                        submitButton.textContent = 'Gerar XLSX';
+                        fileInput.value = '';
+                        label.textContent = 'Clique ou arraste os arquivos aqui';
+                    });
+                } else {
+                    // Tratamento de erro
+                    alert('Erro ao gerar o arquivo.');
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('loading');
+                    submitButton.textContent = 'Gerar XLSX';
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao enviar a solicitação.');
                 submitButton.disabled = false;
                 submitButton.classList.remove('loading');
                 submitButton.textContent = 'Gerar XLSX';
